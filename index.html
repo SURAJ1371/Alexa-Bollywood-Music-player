@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alexa for Bollywood Music</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
+            margin: 0;
+        }
+        #alexa-container {
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            text-align: center;
+            width: 320px;
+            position: relative;
+            overflow: hidden;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        #response-area {
+            margin: 20px 0;
+        }
+        #response {
+            color: #666;
+            font-size: 1.1em;
+        }
+        button {
+            margin-top: 20px;
+            padding: 12px 30px;
+            border-radius: 25px;
+            border: none;
+            background-color: #ff7e5f;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300%;
+            height: 300%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.5s ease;
+            border-radius: 50%;
+            z-index: 0;
+            opacity: 0;
+        }
+        button:hover {
+            background-color: #feb47b;
+        }
+        button:hover::before {
+            width: 0;
+            height: 0;
+            opacity: 1;
+        }
+        button span {
+            position: relative;
+            z-index: 1;
+        }
+        #player {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="alexa-container">
+        <h1>Bollywood Music Alexa</h1>
+        <div id="response-area">
+            <p id="response">Say a Bollywood song name to play.</p>
+        </div>
+        <button onclick="startVoiceRecognition()">
+            <span>🎤 Speak to Alexa</span>
+        </button>
+        <div id="player"></div>
+    </div>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <script>
+        const YOUTUBE_API_KEY = 'AIzaSyBvbzAd4ou8IVzDNRYuPDjbch8vUI9u9Zs';
+        let player;
+
+        function onYouTubeIframeAPIReady() {
+            // This function is called when the YouTube API is ready
+        }
+
+        function processCommand(command) {
+            const responseElement = document.getElementById("response");
+
+            if (command) {
+                searchYouTube(command + " Bollywood song");
+            } else {
+                responseElement.textContent = "Sorry, I didn't catch that.";
+            }
+        }
+
+        function startVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Sorry, your browser doesn't support speech recognition.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+
+            recognition.onstart = function() {
+                console.log("Voice recognition started. Speak now...");
+            };
+
+            recognition.onspeechend = function() {
+                recognition.stop();
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                console.log("You said: ", transcript);
+
+                processCommand(transcript);
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Error occurred in recognition: ", event.error);
+                alert("Voice recognition error: " + event.error + ". Please try again.");
+            };
+
+            recognition.start();
+        }
+
+        function searchYouTube(query) {
+            const responseElement = document.getElementById("response");
+            responseElement.textContent = `Searching for "${query}"...`;
+
+            fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.items && data.items.length > 0) {
+                        const videoId = data.items[0].id.videoId;
+                        playVideo(videoId);
+                    } else {
+                        responseElement.textContent = "Sorry, no results found.";
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    responseElement.textContent = "An error occurred. Please try again.";
+                });
+        }
+
+        function playVideo(videoId) {
+            const responseElement = document.getElementById("response");
+            responseElement.textContent = "Playing your song...";
+
+            const playerElement = document.getElementById('player');
+            if (player) {
+                player.loadVideoById(videoId);
+            } else {
+                player = new YT.Player('player', {
+                    height: '157',
+                    width: '280',
+                    videoId: videoId,
+                    playerVars: { 'autoplay': 1, 'mute': 1 },
+                    events: {
+                        'onReady': onPlayerReady
+                    }
+                });
+            }
+        }
+
+        function onPlayerReady(event) {
+            event.target.unMute(); // Unmute the video
+        }
+    </script>
+</body>
+</html>
